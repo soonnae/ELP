@@ -620,6 +620,10 @@ function Get-ObservationStatus {
         [object[]]$ObservedEvents
     )
 
+    if (-not $ObservedEvents -or $ObservedEvents.Count -eq 0) {
+        return "no_match"
+    }
+
     $realEvents = @($ObservedEvents | Where-Object { $_.status -eq "observed" -and $_.event_id -ne $null })
     $collectionErrors = @($ObservedEvents | Where-Object { $_.status -eq "collection_failed" })
 
@@ -713,11 +717,11 @@ function Complete-Stage {
     $observed = @()
 
     if ($profile.CandidateEventIds.Count -gt 0) {
-        $observed = Get-ObservedEvents `
+        $observed = @(Get-ObservedEvents `
             -Since $Since `
             -EventIds $profile.CandidateEventIds `
             -LogNames $profile.LogNames `
-            -ComputerTargets $targets
+            -ComputerTargets $targets)
     }
 
     $observationStatus = Get-ObservationStatus -ObservedEvents $observed
