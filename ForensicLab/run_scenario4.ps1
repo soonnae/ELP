@@ -87,8 +87,8 @@ function Resolve-CollectionTargets {
 
     $resolved = @()
 
-    foreach ($host in $Hosts) {
-        switch ($host) {
+    foreach ($hostEntry in $Hosts) {
+        switch ($hostEntry) {
             "attacker" {
                 $resolved += [PSCustomObject]@{
                     role   = "attacker"
