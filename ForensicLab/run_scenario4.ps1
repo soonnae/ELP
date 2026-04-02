@@ -96,7 +96,7 @@ function Resolve-CollectionTargets {
                 }
             }
             "victim" {
-                if ($TryRemoteEventCollection -and -not [string]::IsNullOrWhiteSpace($VictimTarget)) {
+                if (-not [string]::IsNullOrWhiteSpace($VictimTarget)) {
                     $resolved += [PSCustomObject]@{
                         role   = "victim"
                         target = $VictimTarget
@@ -104,7 +104,7 @@ function Resolve-CollectionTargets {
                 }
             }
             "dc" {
-                if ($TryRemoteEventCollection -and -not [string]::IsNullOrWhiteSpace($DCTarget)) {
+                if (-not [string]::IsNullOrWhiteSpace($DCTarget)) {
                     $resolved += [PSCustomObject]@{
                         role   = "dc"
                         target = $DCTarget
