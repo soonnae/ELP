@@ -14,6 +14,7 @@
     [string]$NewPassword = "TempPass123!",
 
     [int]$ObservationWindowSeconds = 12,
+    [System.Management.Automation.PSCredential]$RemoteCredential = $null,
     [switch]$TryRemoteEventCollection,
     [switch]$EnableLabActions,
     [switch]$EnableAccountManipulationActions,
@@ -134,7 +135,8 @@ function Get-ObservedEvents {
         [int[]]$EventIds,
         [string[]]$LogNames,
         [object[]]$ComputerTargets,
-        [int]$MaxEventsPerLog = 30
+        [int]$MaxEventsPerLog = 30,
+        [System.Management.Automation.PSCredential]$Credential = $null
     )
 
     $all = @()
@@ -150,7 +152,16 @@ function Get-ObservedEvents {
                     StartTime = $Since
                 }
 
-                $events = Get-WinEvent -FilterHashtable $filter -ComputerName $computer -ErrorAction Stop |
+                $getWinEventParams = @{
+                    FilterHashtable = $filter
+                    ComputerName    = $computer
+                    ErrorAction     = "Stop"
+                }
+                if ($null -ne $Credential) {
+                    $getWinEventParams["Credential"] = $Credential
+                }
+
+                $events = Get-WinEvent @getWinEventParams |
                     Where-Object { $EventIds -contains $_.Id } |
                     Select-Object -First $MaxEventsPerLog
 
@@ -694,7 +705,8 @@ function Complete-Stage {
         [string]$Message,
         [string]$VictimTarget,
         [string]$DCTarget,
-        [switch]$TryRemoteEventCollection
+        [switch]$TryRemoteEventCollection,
+        [System.Management.Automation.PSCredential]$RemoteCredential = $null
     )
 
     $profile = Get-StageObservationProfile -StageName $Stage.stage_name
@@ -721,7 +733,8 @@ function Complete-Stage {
             -Since $Since `
             -EventIds $profile.CandidateEventIds `
             -LogNames $profile.LogNames `
-            -ComputerTargets $targets)
+            -ComputerTargets $targets `
+            -Credential $RemoteCredential)
     }
 
     $observationStatus = Get-ObservationStatus -ObservedEvents $observed
@@ -793,7 +806,8 @@ foreach ($stage in $scenario.scenario_flow) {
         -Message $actionResult.message `
         -VictimTarget $VictimTarget `
         -DCTarget $DCTarget `
-        -TryRemoteEventCollection:$TryRemoteEventCollection
+        -TryRemoteEventCollection:$TryRemoteEventCollection `
+        -RemoteCredential $RemoteCredential
 
     $stageResults += $stageResult
 
