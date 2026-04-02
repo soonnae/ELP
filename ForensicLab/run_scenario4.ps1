@@ -152,17 +152,31 @@ function Get-ObservedEvents {
                     StartTime = $Since
                 }
 
-                $getWinEventParams = @{
-                    FilterHashtable = $filter
-                    ComputerName    = $computer
-                    ErrorAction     = "Stop"
-                }
-                if ($null -ne $Credential) {
-                    $getWinEventParams["Credential"] = $Credential
+                $credForJob = $Credential
+                $job = Start-Job -ScriptBlock {
+                    param($filter, $computer, $cred)
+                    $params = @{
+                        FilterHashtable = $filter
+                        ComputerName    = $computer
+                        ErrorAction     = "Stop"
+                    }
+                    if ($null -ne $cred) { $params["Credential"] = $cred }
+                    Get-WinEvent @params
+                } -ArgumentList $filter, $computer, $credForJob
+
+                $completed = Wait-Job -Job $job -Timeout 15
+
+                if ($null -eq $completed) {
+                    Stop-Job  -Job $job
+                    Remove-Job -Job $job -Force
+                    throw "Collection timed out after 15 seconds for $computer / $log"
                 }
 
-                $events = Get-WinEvent @getWinEventParams |
-                    Where-Object { $EventIds -contains $_.Id } |
+                $rawEvents = @(Receive-Job -Job $job -ErrorAction SilentlyContinue)
+                Remove-Job -Job $job -Force
+
+                $events = $rawEvents |
+                    Where-Object { $null -ne $_ -and $EventIds -contains $_.Id } |
                     Select-Object -First $MaxEventsPerLog
 
                 foreach ($ev in $events) {
