@@ -87,8 +87,8 @@ function Resolve-CollectionTargets {
 
     $resolved = @()
 
-    foreach ($hostEntry in $Hosts) {
-        switch ($hostEntry) {
+    foreach ($targetHost in $Hosts) {
+        switch ($targetHost) {
             "attacker" {
                 $resolved += [PSCustomObject]@{
                     role   = "attacker"
@@ -644,40 +644,40 @@ function Build-StageAssessment {
     $key = "$ExecutionStatus|$ObservationStatus"
 
     if ($key -eq "attempted|matched") {
-        return "Action executed and related logs observed"
+        return "Action was executed and related logs were observed"
     }
     elseif ($key -eq "attempted|no_match") {
-        return "Action executed but no related logs observed"
+        return "Action was executed but no related logs were observed"
     }
     elseif ($key -eq "attempted|collection_failed") {
-        return "Action executed but remote or local log collection failed"
+        return "Action was executed but log collection or verification failed"
     }
     elseif ($key -eq "manual_required|matched") {
-        return "Not auto-executed but related logs were observed"
+        return "Manual review required, but related logs were observed"
     }
     elseif ($key -eq "manual_required|no_match") {
-        return "Not auto-executed and no related logs observed"
+        return "Manual review required and no related logs were observed"
     }
     elseif ($key -eq "manual_required|collection_failed") {
-        return "Not auto-executed and log collection failed"
+        return "Manual review required but log collection or verification failed"
     }
     elseif ($key -eq "failed|matched") {
-        return "Action execution failed but some related logs observed"
+        return "Action execution failed, but some related logs were observed"
     }
     elseif ($key -eq "failed|no_match") {
-        return "Action execution failed and no logs observed"
+        return "Action execution failed and no related logs were observed"
     }
     elseif ($key -eq "failed|collection_failed") {
         return "Action execution failed and log collection failed"
     }
     elseif ($key -eq "skipped|matched") {
-        return "Stage skipped but related logs observed"
+        return "Action was skipped but related logs were observed"
     }
     else {
         if (-not [string]::IsNullOrWhiteSpace($Message)) {
             return $Message
         }
-        return "Status undetermined"
+        return "Unable to determine status"
     }
 }
 
@@ -695,11 +695,11 @@ function Complete-Stage {
 
     $profile = Get-StageObservationProfile -StageName $Stage.stage_name
 
-    $targets = Resolve-CollectionTargets `
+    $targets = @(Resolve-CollectionTargets `
         -Hosts $profile.Hosts `
         -VictimTarget $VictimTarget `
         -DCTarget $DCTarget `
-        -TryRemoteEventCollection:$TryRemoteEventCollection
+        -TryRemoteEventCollection:$TryRemoteEventCollection)
 
     if ($targets.Count -eq 0) {
         $targets = @(
@@ -793,7 +793,7 @@ foreach ($stage in $scenario.scenario_flow) {
 
     $stageResults += $stageResult
 
-    if ($stageResult.observed_events) {
+    if ($stageResult.PSObject.Properties['observed_events'] -and $stageResult.observed_events) {
         foreach ($item in $stageResult.observed_events) {
             $flatArtifacts += [PSCustomObject]@{
                 stage_id     = $stage.stage_id
@@ -838,7 +838,7 @@ $groundTruthPath = Join-Path $OutputDir "ground_truth.json"
 $artifactPath    = Join-Path $OutputDir "raw_artifacts.json"
 $summaryPath     = Join-Path $OutputDir "run_summary.json"
 
-ConvertTo-PrettyJson -InputObject $summary      | Set-Content -LiteralPath $groundTruthPath -Encoding UTF8
+ConvertTo-PrettyJson -InputObject $summary       | Set-Content -LiteralPath $groundTruthPath -Encoding UTF8
 ConvertTo-PrettyJson -InputObject $flatArtifacts | Set-Content -LiteralPath $artifactPath    -Encoding UTF8
 
 [PSCustomObject]@{
